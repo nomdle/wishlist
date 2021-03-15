@@ -4,6 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <CheckBox
+        android:id="@+id/checkPriority"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Priority" />
+
     <EditText
         android:id="@+id/inputSubject"
         android:layout_width="match_parent"
@@ -13,9 +19,4 @@
         android:gravity="start|top"
         android:inputType="textMultiLine" />
 
-    <CheckBox
-        android:id="@+id/checkPriority"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Priority" />
 </LinearLayout>

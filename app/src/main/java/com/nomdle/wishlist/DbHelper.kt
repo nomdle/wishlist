@@ -18,6 +18,7 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
         Log.d(LOGTAG, "table created")
         //insertItem(0, "Register what you want!", DBContract.Type.Priority, null, DBContract.Status.Active)
         Log.d(LOGTAG, "insert default record")
+        db?.close()
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -28,33 +29,58 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
         }
     }
 
+    fun selectItem(pos: Int): WishItem? {
+        Log.d(LOGTAG, "select items pos=$pos")
+
+        val db = readableDatabase
+        var item: WishItem? = null
+        var cursor = db.rawQuery(
+                "select * from " + DBContract.DBEntry.TABLE_NAME +
+                        " where " + DBContract.DBEntry.POSITION + "=" + pos, null
+        )
+        if (cursor!!.moveToFirst()) {
+            item = WishItem(
+                    cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
+                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
+                    cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
+                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
+                    cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
+                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
+                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
+            )
+        }
+        db.close()
+        return item
+    }
+
     fun selectAllItems(): ArrayList<WishItem> {
         Log.d(LOGTAG, "select all items")
 
         val items = ArrayList<WishItem>()
         val db = readableDatabase
         var cursor = db.rawQuery(
-            "select * from " + DBContract.DBEntry.TABLE_NAME +
-                    " where " + DBContract.DBEntry.STATUS + "=" + DBContract.Status.Active.value +
-                    " order by " + DBContract.DBEntry.TYPE + " asc," +
-                    DBContract.DBEntry.POSITION + " desc", null
+                "select * from " + DBContract.DBEntry.TABLE_NAME +
+                        " where " + DBContract.DBEntry.STATUS + "=" + DBContract.Status.Active.value +
+                        " order by " + DBContract.DBEntry.TYPE + " asc," +
+                        DBContract.DBEntry.POSITION + " desc", null
         )
 
         if (cursor!!.moveToFirst()) {
             do {
                 items.add(
-                    WishItem(
-                        cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
-                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
-                        cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
-                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
-                        cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
-                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
-                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
-                    )
+                        WishItem(
+                                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
+                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
+                                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
+                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
+                                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
+                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
+                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
+                        )
                 )
             } while (cursor.moveToNext())
         }
+        db.close()
         return items
     }
 
@@ -67,17 +93,18 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
             cursor.moveToFirst()
             cnt = cursor.getInt(0)
         }
+        db.close()
         Log.d(LOGTAG, "count is $cnt")
         return cnt
     }
 
     fun insertItem(
-        position: Int,
-        subject: String,
-        type: DBContract.Type,
-        detail: String?,
-        status: DBContract.Status
-    ): Long? {
+            position: Int,
+            subject: String,
+            type: DBContract.Type,
+            detail: String?,
+            status: DBContract.Status
+    ) {
         val db = writableDatabase
 
         val values = ContentValues()
@@ -87,7 +114,27 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
         values.put(DBContract.DBEntry.DETAIL, detail)
         values.put(DBContract.DBEntry.STATUS, status.value)
         values.put(DBContract.DBEntry.CREATED_DATE, getCurrentDate())
-        return db?.insert(DBContract.DBEntry.TABLE_NAME, null, values)
+        db.insert(DBContract.DBEntry.TABLE_NAME, null, values)
+        db.close()
+    }
+
+    fun updateItem(
+            position: Int,
+            subject: String,
+            type: DBContract.Type,
+            detail: String?,
+            status: DBContract.Status
+    ) {
+        val db = writableDatabase
+
+        val values = ContentValues()
+        values.put(DBContract.DBEntry.SUBJECT, subject)
+        values.put(DBContract.DBEntry.TYPE, type.value)
+        values.put(DBContract.DBEntry.DETAIL, detail)
+        values.put(DBContract.DBEntry.STATUS, status.value)
+        values.put(DBContract.DBEntry.CREATED_DATE, getCurrentDate())
+        db.update(DBContract.DBEntry.TABLE_NAME, values, DBContract.DBEntry.POSITION + "=?", arrayOf(position.toString()))
+        db.close()
     }
 
     private fun getCurrentDate(): String {
