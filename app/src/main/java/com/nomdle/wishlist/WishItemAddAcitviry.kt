@@ -32,16 +32,13 @@ class WishItemAddAcitviry() : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        Log.d(LOGTAG, "item:" + item.itemId)
-        Log.d(LOGTAG, "R.id:" + android.R.id.home)
         if (item.itemId == android.R.id.home) {
             if (!inputSubject.text.trim().isEmpty()) {
-
                 dbHelper = DbHelper(this)
+
                 val subject = inputSubject.text.toString()
                 val type = if (checkPriority.isChecked) DBContract.Type.Priority else DBContract.Type.Normal
-                Log.d(LOGTAG, "subject:" + subject)
-                Log.d(LOGTAG, "type:" + type)
+
                 if (position > -1) {
                     dbHelper.updateItem(position, subject, type, null, DBContract.Status.Active)
                 } else {

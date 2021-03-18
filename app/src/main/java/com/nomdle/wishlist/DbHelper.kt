@@ -8,7 +8,6 @@ import android.util.Log
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-
 class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_VERSION) {
     private val LOGTAG = this::class.java.simpleName
     private val dbDateFormatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss")
@@ -16,16 +15,20 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
     override fun onCreate(db: SQLiteDatabase?) {
         db?.execSQL(SQL_CREATE)
         Log.d(LOGTAG, "table created")
-        //insertItem(0, "Register what you want!", DBContract.Type.Priority, null, DBContract.Status.Active)
+
+        val values = ContentValues()
+        values.put(DBContract.DBEntry.POSITION, 0)
+        values.put(DBContract.DBEntry.SUBJECT, "Register what you want!")
+        values.put(DBContract.DBEntry.TYPE, DBContract.Type.Priority.value)
+        values.put(DBContract.DBEntry.STATUS, DBContract.Status.Active.value)
+        values.put(DBContract.DBEntry.CREATED_DATE, getCurrentDate())
+        db?.insert(DBContract.DBEntry.TABLE_NAME, null, values)
         Log.d(LOGTAG, "insert default record")
-        db?.close()
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
         if (oldVersion < newVersion) {
-            if (BuildConfig.DEBUG) {
-                Log.println(Log.DEBUG, "TODO", "for database update")
-            }
+            Log.println(Log.DEBUG, "TODO", "for database update")
         }
     }
 
@@ -34,21 +37,23 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
 
         val db = readableDatabase
         var item: WishItem? = null
-        var cursor = db.rawQuery(
-                "select * from " + DBContract.DBEntry.TABLE_NAME +
-                        " where " + DBContract.DBEntry.POSITION + "=" + pos, null
+
+        val cursor = db?.rawQuery(
+            "select * from " + DBContract.DBEntry.TABLE_NAME +
+                    " where " + DBContract.DBEntry.POSITION + "=" + pos, null
         )
         if (cursor!!.moveToFirst()) {
             item = WishItem(
-                    cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
-                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
-                    cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
-                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
-                    cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
-                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
-                    cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
+                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
+                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
+                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
+                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
+                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
+                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
+                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
             )
         }
+        cursor.close()
         db.close()
         return item
     }
@@ -56,30 +61,32 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
     fun selectAllItems(): ArrayList<WishItem> {
         Log.d(LOGTAG, "select all items")
 
-        val items = ArrayList<WishItem>()
         val db = readableDatabase
-        var cursor = db.rawQuery(
-                "select * from " + DBContract.DBEntry.TABLE_NAME +
-                        " where " + DBContract.DBEntry.STATUS + "=" + DBContract.Status.Active.value +
-                        " order by " + DBContract.DBEntry.TYPE + " asc," +
-                        DBContract.DBEntry.POSITION + " desc", null
+        val items = ArrayList<WishItem>()
+
+        val cursor = db.rawQuery(
+            "select * from " + DBContract.DBEntry.TABLE_NAME +
+                    " where " + DBContract.DBEntry.STATUS + "=" + DBContract.Status.Active.value +
+                    " order by " + DBContract.DBEntry.TYPE + " asc," +
+                    DBContract.DBEntry.POSITION + " desc", null
         )
 
         if (cursor!!.moveToFirst()) {
             do {
                 items.add(
-                        WishItem(
-                                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
-                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
-                                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
-                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
-                                cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
-                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
-                                cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
-                        )
+                    WishItem(
+                        cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.POSITION)),
+                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.SUBJECT)),
+                        cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.TYPE)),
+                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.DETAIL)),
+                        cursor.getInt(cursor.getColumnIndex(DBContract.DBEntry.STATUS)),
+                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CLOSED_DATE)),
+                        cursor.getString(cursor.getColumnIndex(DBContract.DBEntry.CREATED_DATE))
+                    )
                 )
             } while (cursor.moveToNext())
         }
+        cursor.close()
         db.close()
         return items
     }
@@ -87,23 +94,24 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
     fun getItemCount(): Int {
         val db = readableDatabase
 
-        var cursor = db.rawQuery("select count(*) from " + DBContract.DBEntry.TABLE_NAME, null)
-        var cnt: Int = 0
+        val cursor = db.rawQuery("select count(*) from " + DBContract.DBEntry.TABLE_NAME, null)
+        var cnt = 0
         if (cursor != null) {
             cursor.moveToFirst()
             cnt = cursor.getInt(0)
         }
+        Log.d(LOGTAG, "getItemCount return : $cnt")
+        cursor.close()
         db.close()
-        Log.d(LOGTAG, "count is $cnt")
         return cnt
     }
 
     fun insertItem(
-            position: Int,
-            subject: String,
-            type: DBContract.Type,
-            detail: String?,
-            status: DBContract.Status
+        position: Int,
+        subject: String,
+        type: DBContract.Type,
+        detail: String?,
+        status: DBContract.Status
     ) {
         val db = writableDatabase
 
@@ -119,11 +127,11 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
     }
 
     fun updateItem(
-            position: Int,
-            subject: String,
-            type: DBContract.Type,
-            detail: String?,
-            status: DBContract.Status
+        position: Int,
+        subject: String,
+        type: DBContract.Type,
+        detail: String?,
+        status: DBContract.Status
     ) {
         val db = writableDatabase
 
@@ -133,7 +141,12 @@ class DbHelper(context: Context) : SQLiteOpenHelper(context, DB_FILE, null, DB_V
         values.put(DBContract.DBEntry.DETAIL, detail)
         values.put(DBContract.DBEntry.STATUS, status.value)
         values.put(DBContract.DBEntry.CREATED_DATE, getCurrentDate())
-        db.update(DBContract.DBEntry.TABLE_NAME, values, DBContract.DBEntry.POSITION + "=?", arrayOf(position.toString()))
+        db.update(
+            DBContract.DBEntry.TABLE_NAME,
+            values,
+            DBContract.DBEntry.POSITION + "=?",
+            arrayOf(position.toString())
+        )
         db.close()
     }
 
